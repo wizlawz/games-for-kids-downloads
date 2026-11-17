@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="color-scheme" content="dark"/>
+<link rel="icon" href="data:,"/>
+<title>RIFTWARD — Open World Exploration</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Crimson+Pro:ital,wght@0,500;0,600;1,500&family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+<style>
+:root{--gold:#c9a86a;--gold2:#f5d78e;--panel:rgba(12,16,18,.88);--line:rgba(201,168,106,.45);--sky:#7cc4ff;--leaf:#8affa8}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#0b1410;font-family:Inter,system-ui,sans-serif;color:#f3ead6}
+canvas{display:block}
+button{min-height:44px;min-width:44px}
+#game{position:fixed;inset:0}
+#game canvas{width:100%;height:100%}
+.hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+.topbar{position:absolute;top:10px;left:10px;right:10px;display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;backdrop-filter:blur(8px);box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.vitals{min-width:178px}
+.label{font-size:10px;letter-spacing:.18em;font-weight:800;opacity:.85}
+.bar{height:9px;background:#222;border-radius:99px;overflow:hidden;margin:6px 0 8px;border:1px solid rgba(255,255,255,.12)}
+.bar i{display:block;height:100%;border-radius:99px}
+#energyBar{background:linear-gradient(90deg,#2ecc71,#8affa8);width:100%}
+#xpBar{background:linear-gradient(90deg,#4da3ff,#c9a86a);width:0%}
+.journalLine{font-size:12px;font-weight:800;letter-spacing:.06em;color:#ffe9a8;margin-top:2px}
+.runesCard{text-align:center;min-width:150px}
+.runesBig{font-family:Cinzel,serif;font-size:28px;line-height:1;font-weight:900}
+.runesBig span{color:var(--gold2)}
+.diamonds{letter-spacing:4px;color:#5a5346;font-size:14px;margin-top:4px}
+.diamonds b{color:var(--gold2);font-weight:400;text-shadow:0 0 12px gold}
+.scoreCard{text-align:right;min-width:110px}
+.scoreBig{font-family:Cinzel,serif;font-size:26px;font-weight:900}
+.timer{font-size:12px;opacity:.8;font-weight:700}
+.quest{position:absolute;top:104px;left:10px;max-width:320px}
+.quest h3{margin:0;font-family:Cinzel,serif;font-size:13px;letter-spacing:.06em;color:var(--gold2)}
+.quest p{margin:4px 0 0;font-size:12.5px;line-height:1.45;color:#e8ddc2}
+.compass{position:absolute;top:178px;left:50%;transform:translateX(-50%);text-align:center}
+.arrow{font-size:28px;color:var(--gold2);text-shadow:0 0 18px rgba(255,200,0,.9);display:inline-block;transition:transform .1s linear}
+.dist{background:#000a;border:1px solid var(--line);padding:6px 10px;border-radius:99px;font-size:12px;letter-spacing:.14em;font-weight:800;margin-top:2px}
+.controls{position:fixed;inset:auto 0 0 0;z-index:6;pointer-events:none;padding:0 14px calc(14px + env(safe-area-inset-bottom));display:flex;justify-content:space-between;align-items:flex-end}
+.joy{pointer-events:auto;width:132px;height:132px;border-radius:50%;border:2px solid rgba(120,220,255,.5);background:radial-gradient(circle,rgba(20,40,35,.35),rgba(0,0,0,.45));position:relative;touch-action:none}
+.joyKnob{width:62px;height:62px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#9be8ff,#1a6b84);border:2px solid #aeefff;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 22px rgba(0,200,255,.55)}
+.btns{pointer-events:auto;display:grid;grid-template-columns:74px 96px;gap:10px;align-items:end}
+.cbtn{border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(8,14,16,.78);color:#fff;font-weight:900;letter-spacing:.08em;font-size:12px;display:flex;align-items:center;justify-content:center;text-align:center;backdrop-filter:blur(6px);cursor:pointer}
+.cbtn:active{transform:scale(.94)}
+#btnUse{width:96px;height:96px;border-color:#7cc4ff;background:radial-gradient(circle,rgba(14,70,80,.92),rgba(6,24,32,.94));font-size:13px;grid-row:span 2}
+#btnDash{width:74px;height:74px;border-color:var(--gold);color:var(--gold2)}
+#btnJump{width:74px;height:74px}
+.smallBtns{position:fixed;left:10px;top:216px;z-index:7;display:flex;flex-direction:column;gap:8px}
+.smallBtns button{pointer-events:auto;background:var(--panel);color:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-weight:800;font-size:11px;letter-spacing:.12em;cursor:pointer}
+.overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(ellipse at 50% 20%,rgba(50,80,40,.55),rgba(0,0,0,.88) 65%),linear-gradient(#0c1410,#050a08);overflow:auto}
+.panel{max-width:860px;width:100%;background:linear-gradient(180deg,#16201a,#0d130f);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.8)}
+.hero{padding:26px 22px 10px;text-align:center;background:radial-gradient(600px 220px at 50% -40px,rgba(201,168,106,.35),transparent)}
+.heroIcon{font-size:42px;line-height:1}
+h1{font-family:Cinzel,serif;font-size:52px;letter-spacing:.12em;margin:6px 0 2px;line-height:.95;color:#fff;text-shadow:0 4px 30px rgba(201,168,106,.4)}
+.sub{letter-spacing:.28em;font-size:11px;font-weight:800;color:var(--gold2)}
+.story{padding:6px 22px 0;font-family:"Crimson Pro",serif;font-size:18px;line-height:1.55;color:#e9ddc0;text-align:center}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px}
+.feat{background:#ffffff08;border:1px solid #ffffff14;border-radius:14px;padding:12px}
+.feat strong{display:block;font-size:13px}
+.feat span{font-size:12.5px;line-height:1.45;color:#cbbfa3;display:block;margin-top:4px}
+.cta{padding:0 18px 20px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.play{flex:1;min-width:220px;background:linear-gradient(180deg,#e8c87a,#9a7a2e);color:#171106;border:none;border-radius:14px;font-family:Cinzel,serif;font-weight:900;letter-spacing:.08em;font-size:18px;padding:16px;cursor:pointer;box-shadow:0 10px 30px rgba(201,168,106,.35)}
+.ghost{background:transparent;color:#e8ddc2;border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-weight:800;cursor:pointer}
+.note{font-size:12px;text-align:center;opacity:.75;padding:0 18px 16px;line-height:1.5}
+.hidden{display:none!important}
+#toast{position:fixed;left:50%;bottom:180px;transform:translateX(-50%);z-index:9;background:#000e;border:1px solid var(--line);color:#ffe9a8;padding:11px 16px;border-radius:16px;font-weight:700;font-size:13.5px;line-height:1.5;pointer-events:none;opacity:0;transition:.3s;width:min(92vw,560px);text-align:center}
+#toast.show{opacity:1}
+#winPanel h2{font-family:Cinzel,serif;font-size:34px;margin:8px 0;text-align:center}
+#journalPanel .panel{max-width:620px;padding:24px 22px}
+#journalPanel h2{font-family:Cinzel,serif;font-size:28px;margin:4px 0 10px;text-align:center}
+.jItem{border:1px solid #ffffff1c;background:#ffffff07;border-radius:12px;padding:10px 12px;margin:8px 0;text-align:left}
+.jItem strong{font-size:14px}
+.jItem p{margin:4px 0 0;font-size:13px;line-height:1.5;color:#cbbfa3}
+.jItem.locked{opacity:.55}
+@media(max-width:640px){.grid{grid-template-columns:1fr 1fr}h1{font-size:38px}.quest{display:none}
+.topbar{gap:6px;left:6px;right:6px;top:6px}.card{padding:8px}.vitals{min-width:0;flex:1.2}.runesCard{min-width:0;flex:1}.scoreCard{min-width:0;flex:.72;text-align:center}.runesBig{font-size:21px}.scoreBig{font-size:20px}.diamonds{letter-spacing:1px;font-size:11px}.label{font-size:8.5px;letter-spacing:.1em}.compass{top:138px}.journalLine{font-size:10.5px}
+.controls{padding:0 8px calc(10px + env(safe-area-inset-bottom))}.joy{width:108px;height:108px;flex:0 0 108px}.btns{grid-template-columns:60px 82px;gap:7px}#btnUse{width:82px;height:82px;font-size:11px}#btnDash,#btnJump{width:60px;height:60px;font-size:10px}
+.smallBtns{top:184px}#toast{bottom:158px}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+
+<div class="hud" id="hud" style="display:none">
+  <div class="topbar">
+    <div class="card vitals">
+      <div class="label">✦ ENERGY</div><div class="bar"><i id="energyBar"></i></div>
+      <div class="label">EXPLORER LEVEL <span id="lvlTxt">1</span> • XP</div><div class="bar" style="height:6px"><i id="xpBar"></i></div>
+      <div class="journalLine">📖 JOURNAL — <span id="discCount">0</span> / 8 DISCOVERIES</div>
+    </div>
+    <div class="card runesCard">
+      <div class="label">ANCIENT RUNESTONES</div>
+      <div class="runesBig"><span id="runeCount">0</span> / 7</div>
+      <div class="diamonds" id="diamonds">◇ ◇ ◇ ◇ ◇ ◇ ◇</div>
+      <div style="font-size:11px;letter-spacing:.2em;margin-top:4px">◆ <span style="color:#7cc4ff">N</span> ◆</div>
+    </div>
+    <div class="card scoreCard">
+      <div class="label">SCORE</div><div class="scoreBig" id="scoreTxt">0</div><div class="timer" id="timerTxt">00:00</div>
+    </div>
+  </div>
+  <div class="card quest"><h3>🧭 MAIN QUEST — RESTORE THE RIFT</h3><p id="questTxt">Follow the gold arrow to the Runestones. Collect all 7, scan discoveries for your journal along the way, then return to the World Shrine in the center.</p></div>
+  <div class="compass"><div class="arrow" id="compArrow">➤</div><div class="dist" id="distTxt">RUNE — 62m</div></div>
+</div>
+
+<div class="smallBtns" id="smallBtns" style="display:none">
+  <button id="sndBtn">SOUND ON</button>
+  <button id="loreBtn">📖 JOURNAL</button>
+  <button id="camBtn">CAM RESET</button>
+</div>
+
+<div class="controls" id="controls" style="display:none">
+  <div class="joy" id="joy"><div class="joyKnob" id="joyKnob"></div></div>
+  <div class="btns">
+    <button class="cbtn" id="btnJump">JUMP</button>
+    <button class="cbtn" id="btnUse">SCAN /<br>TALK 🔍</button>
+    <button class="cbtn" id="btnDash">RUN</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- INTRO -->
+<div class="overlay" id="intro">
+  <div class="panel">
+    <div class="hero">
+      <div class="heroIcon">🧭</div>
+      <div class="sub">OPEN WORLD • EXPLORATION • DISCOVERY</div>
+      <h1>RIFTWARD</h1>
+      <p style="margin:4px 0 0;letter-spacing:.18em;font-weight:700;font-size:12px;opacity:.85">A PEACEFUL FANTASY WORLD TO WANDER, SCAN AND LEARN</p>
+    </div>
+    <p class="story">Long ago, a gentle Rift opened above a green kingdom and scattered its light into <b>7 Ancient Runestones</b> hidden across forests, meadows and old ruins. Nothing here is dangerous — the valley is waiting to be explored, not conquered.<br><br>
+    You are a young <strong style="color:#f5d78e">Riftwarden</strong> — an explorer and researcher with a lantern, a satchel and a field journal. Wander the open world, follow the gold arrow to every Runestone, and stop along the way to <b>scan glowing discoveries</b>: mushrooms that make their own light, crystals that sing, fossils, sundials, bees and moths. Each scan teaches you something real and fills a page of your journal. Gather all 7 Runestones and bring them home to the World Shrine to restore the Rift and light the valley again.</p>
+    <div class="grid">
+      <div class="feat"><strong>🌲 Explore an Open World</strong><span>Forest, village, meadows, stone ruins and lantern-lit paths around a central shrine. Go anywhere — no rails, no loading screens.</span></div>
+      <div class="feat"><strong>🔍 Scan &amp; Learn</strong><span>Find 8 glowing discovery spots — plants, crystals, ruins and gentle creatures. Tap SCAN nearby to observe each one and learn a real science or nature fact.</span></div>
+      <div class="feat"><strong>💎 How You Win</strong><span>Collect 7 / 7 Runestones, then return to the World Shrine and tap SCAN / TALK to restore the Rift. The gold arrow always points to your next stone.</span></div>
+      <div class="feat"><strong>📖 Fill Your Journal</strong><span>Every discovery and Runestone earns XP and score. Level up as an explorer and open your JOURNAL any time to read what you have found.</span></div>
+      <div class="feat"><strong>🏘️ Talk &amp; Discover</strong><span>Villagers are researchers and guides. Walk up and tap SCAN / TALK for hints about the valley and where to explore next.</span></div>
+      <div class="feat"><strong>📱 Built for Your Phone</strong><span>Big friendly touch controls: joystick left, SCAN / RUN / JUMP right. Also works with WASD, Space, Shift and E on desktop.</span></div>
+    </div>
+    <div class="cta">
+      <button class="play" id="startBtn">▶ &nbsp; START EXPLORING</button>
+      <button class="ghost" id="howBtn">How to Play</button>
+    </div>
+    <p class="note" id="howTxt" style="display:none">LEFT STICK — Walk &nbsp;•&nbsp; SCAN / TALK — Observe a discovery, chat with a villager, or restore the Rift at the shrine &nbsp;•&nbsp; RUN — Quick burst (uses energy, which refills as you walk) &nbsp;•&nbsp; JUMP — Hop over rocks and roots &nbsp;•&nbsp; Follow the gold arrow at the top — the distance counts down in metres. Glowing spots that are not Runestones are discoveries: stand close and tap SCAN to learn about them.</p>
+    <p class="note">Riftward is a peaceful exploration game: wander → discover → learn → collect 7 Runestones → restore the Rift → win.</p>
+  </div>
+</div>
+
+<!-- JOURNAL -->
+<div class="overlay hidden" id="journalPanel">
+  <div class="panel">
+    <div style="text-align:center;font-size:34px">📖</div>
+    <h2>FIELD JOURNAL</h2>
+    <p style="text-align:center;font-size:13.5px;color:#cbbfa3;margin:0 0 6px" id="journalSummary">0 of 8 discoveries scanned.</p>
+    <div id="journalList"></div>
+    <button class="play" id="journalClose" style="width:100%;margin-top:12px">KEEP EXPLORING</button>
+  </div>
+</div>
+
+<!-- WIN -->
+<div class="overlay hidden" id="winPanel">
+  <div class="panel" style="max-width:560px;text-align:center;padding:28px 22px">
+    <div style="font-size:44px">🌟</div>
+    <h2>RIFT RESTORED — YOU DID IT!</h2>
+    <p style="font-family:'Crimson Pro',serif;font-size:18px;line-height:1.6;color:#e9ddc0">All 7 Runestones are home, and the Rift closes in a wash of warm light over the forests and meadows. That is what Riftward is about: not just visiting a world — exploring it, learning how it works, and putting its light back together.</p>
+    <p id="winStats" style="font-weight:800;letter-spacing:.06em"></p>
+    <button class="play" id="againBtn" style="width:100%">EXPLORE AGAIN</button>
+  </div>
+</div>
+
+<script>
+let scene,camera,renderer,clock;
+let player, lanternPivot, playerVelY=0, onGround=true;
+let keys={}, joyVec={x:0,y:0};
+let energy=100,level=1,xp=0,score=0,runesFound=0,elapsed=0,playing=false;
+let runestones=[], npcs=[], obstacles=[], discoveries=[], creatures=[];
+let camYaw=0, dashCooldown=0, isRunning=0;
+let audioOn=true, actx=null;
+const runePositions=[[-38,-42],[42,-38],[58,28],[-55,35],[-18,62],[28,58],[0,-68]];
+const discoveryDefs=[
+ {x:-30,z:-28,name:"Glowcap Mushrooms",color:0x7dff9a,kind:"mushroom",fact:"Some fungi glow with bioluminescence — light made by living things. Fungi also break down fallen leaves and wood, returning nutrients to the soil so new plants can grow."},
+ {x:36,z:-24,name:"Singing Crystals",color:0x7ee8ff,kind:"crystal",fact:"Quartz crystals vibrate at a steady rate when electricity passes through them. Scientists call the effect piezoelectricity — and it is how quartz watches keep such accurate time."},
+ {x:-62,z:-58,name:"The Old Sundial",color:0xf5d78e,kind:"sundial",fact:"A sundial tells the time from the Sun's shadow. As Earth rotates, the shadow sweeps around the dial — the Sun appears to move about 15 degrees across the sky every hour."},
+ {x:64,z:-8,name:"Pinecone Grove",color:0xa8d86a,kind:"pinecone",fact:"A pinecone is a seed protector. In dry weather its scales open so winged seeds can spin away on the wind; in wet weather the scales close to keep the seeds safe."},
+ {x:-68,z:8,name:"Fossil Stones",color:0xd9b48a,kind:"fossil",fact:"Fossils are the preserved traces of living things turned to stone over millions of years. The shell shapes in these rocks show this valley floor was once covered by water."},
+ {x:12,z:-52,name:"Star Chart Stones",color:0xc9b8ff,kind:"stars",fact:"People have charted the stars for thousands of years to track the seasons. Constellations are patterns we imagine between stars — stars that can be enormous distances apart in space."},
+ {x:-8,z:44,name:"Honeybee Meadow",color:0xffd34d,kind:"flowers",fact:"Honeybees carry pollen from flower to flower as they gather nectar. That pollination helps plants make seeds and fruit — bees help grow a large share of the food people eat."},
+ {x:48,z:48,name:"Moon Moth Hollow",color:0xb8ffd9,kind:"moth",fact:"Moon moths have long ribbon tails that spin as they fly, confusing the sonar of hunting bats. Adult moon moths never eat — they live on energy stored from their caterpillar days."}
+];
+const npcLines=[
+ "Guide Mira: \"Welcome, explorer! The gold arrow never lies — it always points to your next Runestone. Scan anything that glows along the way.\"",
+ "Botanist Rowan: \"The Glowcap Mushrooms west of the village make their own light. Stand close and scan them for your journal!\"",
+ "Stargazer Lyra: \"I chart the sky from the Star Stones north of here. On a clear night you can see the same constellations our ancestors mapped.\"",
+ "Keeper Bram: \"Every Runestone you bring home makes the shrine ring shine a little brighter. Seven, and the Rift is restored.\""
+];
+const $=id=>document.getElementById(id);
+let toastTimer=null;
+function toast(msg,ms=2400){const t=$('toast');t.textContent=msg;t.classList.add('show');if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),ms)}
+function beep(freq=440,dur=0.08,type='sine',vol=0.05){if(!audioOn)return;try{if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();let o=actx.createOscillator(),g=actx.createGain();o.type=type;o.frequency.value=freq;g.gain.value=vol;o.connect(g);g.connect(actx.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+dur);o.stop(actx.currentTime+dur)}catch(e){}}
+function mat(c,r=0.85,m=0.05){return new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m})}
+function box(w,h,d,c,x=0,y=0,z=0){let ms=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c,0.8,0.15));ms.position.set(x,y,z);ms.castShadow=true;ms.receiveShadow=true;return ms}
+
+function init(){
+ scene=new THREE.Scene(); scene.background=new THREE.Color(0x274b63); scene.fog=new THREE.Fog(0x274b63,30,120);
+ camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,0.1,300);
+ renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'}); renderer.setSize(innerWidth,innerHeight); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.15;
+ $('game').appendChild(renderer.domElement); clock=new THREE.Clock();
+ scene.add(new THREE.AmbientLight(0xaabbcc,0.6));
+ let sun=new THREE.DirectionalLight(0xffe6b0,1.6); sun.position.set(30,55,20); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-70;sun.shadow.camera.right=70;sun.shadow.camera.top=70;sun.shadow.camera.bottom=-70; scene.add(sun);
+ scene.add(new THREE.HemisphereLight(0xbdd6ff,0x2a3020,0.55));
+ let ground=new THREE.Mesh(new THREE.PlaneGeometry(220,220,32,32), new THREE.MeshStandardMaterial({color:0x3d6034,roughness:1}));
+ ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+ let path=new THREE.Mesh(new THREE.PlaneGeometry(8,180),mat(0x6b583d,1)); path.rotation.x=-Math.PI/2; path.position.y=0.02; path.receiveShadow=true; scene.add(path);
+ let path2=new THREE.Mesh(new THREE.PlaneGeometry(180,7),mat(0x635136,1)); path2.rotation.x=-Math.PI/2; path2.position.y=0.021; path2.receiveShadow=true; scene.add(path2);
+ // World Shrine — the Runestone return point
+ let shrine=new THREE.Group();
+ for(let i=0;i<6;i++){let a=i/6*Math.PI*2;let p=box(1.2,7,1.2,0x8a8578,Math.cos(a)*9,3.5,Math.sin(a)*9);shrine.add(p)}
+ let ring=new THREE.Mesh(new THREE.TorusGeometry(7,0.35,10,40),new THREE.MeshStandardMaterial({color:0xc9a86a,metalness:0.9,roughness:0.25,emissive:0x442200})); ring.rotation.x=Math.PI/2; ring.position.y=7.2; shrine.add(ring);
+ let crystal=new THREE.Mesh(new THREE.OctahedronGeometry(1.4),new THREE.MeshStandardMaterial({color:0x7ee8ff,emissive:0x1188aa,roughness:0.1,metalness:0.2})); crystal.position.y=4; shrine.add(crystal); scene.add(shrine);
+ obstacles.push({x:0,z:0,r:10});
+ // pine forest
+ for(let i=0;i<90;i++){let x=(Math.random()-0.5)*190,z=(Math.random()-0.5)*190; if(Math.hypot(x,z)<14||Math.abs(x)<6||Math.abs(z)<6) continue; if(discoveryDefs.some(d=>Math.hypot(x-d.x,z-d.z)<4)) continue; if(runePositions.some(p=>Math.hypot(x-p[0],z-p[1])<4)) continue; let t=new THREE.Group(); t.add(box(0.6,2.2,0.6,0x4a3220,0,1.1,0)); for(let k=0;k<3;k++){let cone=new THREE.Mesh(new THREE.ConeGeometry(2.2-k*0.45,3.2,8),mat(0x256b33,0.95)); cone.position.y=3+k*1.4; cone.castShadow=true; t.add(cone)} t.position.set(x,0,z); let s=0.8+Math.random()*0.9; t.scale.setScalar(s); scene.add(t); obstacles.push({x,z,r:1.1*s})}
+ // rocks & old ruins
+ for(let i=0;i<28;i++){let x=(Math.random()-0.5)*180,z=(Math.random()-0.5)*180; if(Math.hypot(x,z)<13)continue; let r=box(1+Math.random()*2,1+Math.random()*1.6,1+Math.random()*2,0x7a7f88,x,0.6,z); r.rotation.y=Math.random()*3; scene.add(r); obstacles.push({x,z,r:1.6})}
+ for(let i=0;i<10;i++){let x=-70+i*15+(Math.random()*6-3),z=-78+Math.random()*8; let p=box(1.4,6+Math.random()*4,1.4,0x9a9588,x,3,z); scene.add(p); obstacles.push({x,z,r:1.2})}
+ // village of researchers & guides
+ [[-22,-18],[20,-20],[-24,14],[24,16]].forEach(([x,z],idx)=>{let h=new THREE.Group(); h.add(box(6,3.5,5,idx%2?0x7a5a3a:0x8a6a45,0,1.75,0)); let roof=new THREE.Mesh(new THREE.ConeGeometry(4.6,2.2,4),mat(0x7a4a28,0.9)); roof.position.y=4.6; roof.rotation.y=Math.PI/4; roof.castShadow=true; h.add(roof); h.add(box(1,2,0.2,0x2a1a0a,0,1,2.6)); h.position.set(x,0,z); scene.add(h); obstacles.push({x,z,r:4.2});
+   let npc=makeNPC(x+4,z+3,npcLines[idx]); scene.add(npc.group); npcs.push(npc); });
+ // lantern posts around the shrine
+ for(let i=0;i<14;i++){let a=i/14*Math.PI*2; let x=Math.cos(a)*18,z=Math.sin(a)*18; let l=new THREE.PointLight(0xffb45e,1.1,14); l.position.set(x,2.2,z); scene.add(l); scene.add(box(0.25,2,0.25,0x4a3520,x,1,z))}
+ // explorer
+ player=makeExplorer(); player.position.set(0,0,14); scene.add(player);
+ // runestones
+ runePositions.forEach((p,i)=>{let g=new THREE.Group(); let gem=new THREE.Mesh(new THREE.OctahedronGeometry(0.9),new THREE.MeshStandardMaterial({color:0xf5d78e,emissive:0xaa7700,metalness:0.3,roughness:0.15})); gem.position.y=1.8; g.add(gem); let ring2=new THREE.Mesh(new THREE.TorusGeometry(1.25,0.08,8,28),new THREE.MeshStandardMaterial({color:0xe8e8ff,metalness:0.95,roughness:0.15})); ring2.rotation.x=Math.PI/2.4; ring2.position.y=1.8; g.add(ring2); let light=new THREE.PointLight(0xffcc44,1.4,12); light.position.y=2; g.add(light); g.position.set(p[0],0,p[1]); g.userData={gem,ring:ring2,found:false,idx:i}; scene.add(g); runestones.push(g); });
+ // discoveries
+ discoveryDefs.forEach((def,i)=>{let d=makeDiscovery(def,i); scene.add(d.group); discoveries.push(d)});
+ // gentle creatures — butterflies & moths drifting over the meadows
+ for(let i=0;i<7;i++){let c=makeButterfly(i); scene.add(c.group); creatures.push(c)}
+ updateHUD(); animate();
+}
+function makeExplorer(){
+ let g=new THREE.Group();
+ g.add(box(0.38,0.95,0.38,0x5a4632,-0.28,0.48,0)); // legs — walking trousers
+ g.add(box(0.38,0.95,0.38,0x5a4632,0.28,0.48,0));
+ g.add(box(0.95,1.05,0.55,0x1f6f5b,0,1.45,0)); // teal explorer tunic
+ g.add(box(1.0,0.2,0.6,0xc9a86a,0,1.06,0)); // belt
+ g.add(box(0.5,0.55,0.5,0xd9b48a,0,2.3,0)); // head
+ g.add(box(0.58,0.16,0.58,0x6b4a26,0,2.62,0)); // explorer cap
+ g.add(box(0.58,0.08,0.3,0x6b4a26,0,2.55,0.4)); // cap brim
+ g.add(box(0.9,0.22,0.58,0xf5d78e,0,1.92,0)); // sunny scarf
+ g.add(box(0.3,0.85,0.3,0x1f6f5b,-0.68,1.35,0)); g.add(box(0.3,0.85,0.3,0x1f6f5b,0.68,1.35,0)); // arms
+ // binoculars on a chest strap
+ g.add(box(0.16,0.22,0.14,0x22303a,-0.14,1.62,0.36)); g.add(box(0.16,0.22,0.14,0x22303a,0.14,1.62,0.36));
+ // satchel with a flap, worn at the side
+ g.add(box(0.55,0.6,0.3,0x8a5f33,-0.72,0.95,-0.1)); g.add(box(0.57,0.2,0.32,0x6e4a26,-0.72,1.22,-0.1));
+ // field notebook in the left hand
+ g.add(box(0.34,0.44,0.07,0xf3ead6,-0.72,0.85,0.3));
+ // lantern in the right hand — on a pivot so it sways as you walk
+ lanternPivot=new THREE.Group(); lanternPivot.position.set(0.72,0.95,0.25);
+ lanternPivot.add(box(0.3,0.08,0.3,0x8a6a1f,0,0.3,0));
+ let glass=box(0.26,0.34,0.26,0xffd98a,0,0.08,0); glass.material=new THREE.MeshStandardMaterial({color:0xffd98a,emissive:0xcc8822,roughness:0.3}); lanternPivot.add(glass);
+ lanternPivot.add(box(0.3,0.08,0.3,0x8a6a1f,0,-0.14,0));
+ let ll=new THREE.PointLight(0xffc266,0.9,8); ll.position.y=0.1; lanternPivot.add(ll);
+ g.add(lanternPivot);
+ // floating marker — diamond + ring above the explorer
+ let marker=new THREE.Group(); let dm=new THREE.Mesh(new THREE.OctahedronGeometry(0.28),new THREE.MeshStandardMaterial({color:0x7ee8ff,emissive:0x2288aa})); marker.add(dm); let rr=new THREE.Mesh(new THREE.TorusGeometry(0.48,0.04,8,24),new THREE.MeshStandardMaterial({color:0xffffff,metalness:0.9,roughness:0.2})); rr.rotation.x=Math.PI/2.3; marker.add(rr); marker.position.y=3.15; g.add(marker);
+ g.userData.marker=marker; return g;
+}
+function makeNPC(x,z,line){
+ let g=new THREE.Group(); g.add(box(0.8,1.4,0.5,0x74563a,0,1.15,0)); g.add(box(0.5,0.5,0.5,0xd9b48a,0,2.1,0)); g.add(box(0.56,0.14,0.56,0x3f6d8e,0,2.4,0)); g.position.set(x,0,z);
+ return {group:g,line,x,z}
+}
+function makeDiscovery(def,idx){
+ let g=new THREE.Group();
+ g.add(box(1.3,0.7,1.3,0x8a8578,0,0.35,0)); // stone pedestal
+ let gem=new THREE.Mesh(new THREE.OctahedronGeometry(0.55),new THREE.MeshStandardMaterial({color:def.color,emissive:def.color,emissiveIntensity:0.55,roughness:0.2,metalness:0.2})); gem.position.y=1.7; g.add(gem);
+ let light=new THREE.PointLight(def.color,1.1,10); light.position.y=2; g.add(light);
+ if(def.kind==='mushroom'){for(let i=0;i<3;i++){let st=box(0.16,0.5,0.16,0xe8ddc2,-0.7+i*0.5,0.25,0.7); g.add(st); let cap=new THREE.Mesh(new THREE.SphereGeometry(0.32,10,8,0,Math.PI*2,0,Math.PI/2),new THREE.MeshStandardMaterial({color:0x7dff9a,emissive:0x1d7a33,roughness:0.5})); cap.position.set(-0.7+i*0.5,0.5,0.7); g.add(cap)}}
+ if(def.kind==='crystal'){for(let i=0;i<3;i++){let c=new THREE.Mesh(new THREE.OctahedronGeometry(0.4),new THREE.MeshStandardMaterial({color:0x7ee8ff,emissive:0x2277aa,roughness:0.15})); c.position.set(-0.6+i*0.6,0.9,0.75); c.scale.y=1.8; g.add(c)}}
+ if(def.kind==='sundial'){let disc=new THREE.Mesh(new THREE.CylinderGeometry(0.85,0.85,0.14,20),mat(0xb8b0a0,0.6,0.3)); disc.position.set(0,0.85,0.7); g.add(disc); let pointer=box(0.1,0.6,0.5,0x8a6a1f,0,1.1,0.7); pointer.rotation.x=-0.6; g.add(pointer)}
+ if(def.kind==='pinecone'){for(let i=0;i<3;i++){let cone=new THREE.Mesh(new THREE.ConeGeometry(0.32,0.7,8),mat(0x7a4a26,0.95)); cone.position.set(-0.6+i*0.6,0.35,0.75); cone.rotation.x=Math.PI; g.add(cone)}}
+ if(def.kind==='fossil'){let slab=new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.8,0.18,18),mat(0xcbb79a,0.9)); slab.position.set(0,0.5,0.75); g.add(slab)}
+ if(def.kind==='stars'){for(let i=0;i<3;i++){let s=new THREE.Mesh(new THREE.SphereGeometry(0.13,8,8),new THREE.MeshBasicMaterial({color:0xfff2b0})); s.position.set(-0.6+i*0.6,1.1+((i%2)*0.4),0.75); g.add(s)}}
+ if(def.kind==='flowers'){for(let i=0;i<5;i++){let fx=-0.8+i*0.4; g.add(box(0.07,0.55,0.07,0x2e7a3a,fx,0.27,0.75)); let fl=new THREE.Mesh(new THREE.SphereGeometry(0.17,8,8),new THREE.MeshStandardMaterial({color:[0xff8ab0,0xffd34d,0xc9b8ff,0xffa26b,0x8ad0ff][i],roughness:0.6})); fl.position.set(fx,0.62,0.75); g.add(fl)}}
+ if(def.kind==='moth'){let w1=box(0.7,0.04,0.45,0xb8ffd9,-0.45,1.1,0.7); w1.rotation.z=0.4; g.add(w1); let w2=box(0.7,0.04,0.45,0xb8ffd9,0.45,1.1,0.7); w2.rotation.z=-0.4; g.add(w2); g.add(box(0.18,0.18,0.55,0x5a7a68,0,1.05,0.7))}
+ g.position.set(def.x,0,def.z);
+ return {group:g,gem,def,found:false,x:def.x,z:def.z,idx}
+}
+function makeButterfly(i){
+ let g=new THREE.Group();
+ let colors=[0xffa2c8,0x9be8ff,0xffe28a,0xc9b8ff,0xa8ffb0,0xffc39a,0xb8ffd9];
+ g.add(box(0.14,0.14,0.5,0x3a3a44,0,0,0));
+ let wmat=new THREE.MeshStandardMaterial({color:colors[i%colors.length],roughness:0.6,side:THREE.DoubleSide});
+ let w1=new THREE.Mesh(new THREE.PlaneGeometry(0.65,0.45),wmat); w1.position.x=-0.38; g.add(w1);
+ let w2=new THREE.Mesh(new THREE.PlaneGeometry(0.65,0.45),wmat); w2.position.x=0.38; g.add(w2);
+ let cx=(Math.random()-0.5)*110, cz=(Math.random()-0.5)*110;
+ if(Math.hypot(cx,cz)<16){cx+=24;cz+=24}
+ g.position.set(cx,2.2,cz);
+ return {group:g,w1,w2,cx,cz,phase:Math.random()*6.28,radius:5+Math.random()*6,speed:0.25+Math.random()*0.3,height:2+Math.random()*1.2}
+}
+function discoveriesFound(){return discoveries.filter(d=>d.found).length}
+function gainXP(n){
+ xp+=n;
+ while(xp>=100){xp-=100;level++;energy=100;toast('⭐ EXPLORER LEVEL UP! You are now Level '+level,3000);beep(880,0.18,'sine',0.06)}
+}
+function updateHUD(){
+ $('energyBar').style.width=Math.max(0,energy)+'%'; $('xpBar').style.width=(xp%100)+'%';
+ $('lvlTxt').textContent=level; $('runeCount').textContent=runesFound; $('scoreTxt').textContent=score; $('discCount').textContent=discoveriesFound();
+ let d=''; for(let i=0;i<7;i++) d+=(i<runesFound?'◆ ':'◇ '); $('diamonds').innerHTML=d.replace(/◆/g,'<b>◆</b>');
+}
+function nearestRune(){
+ let best=null,bd=1e9; runestones.forEach(r=>{if(r.userData.found)return; let d=player.position.distanceTo(r.position); if(d<bd){bd=d;best=r}}); return {r:best,d:bd}
+}
+function doRun(){if(!playing||dashCooldown>0||energy<18)return; dashCooldown=0.9; isRunning=0.25; energy-=18; beep(520,0.08,'sine',0.04); updateHUD()}
+function doJump(){if(onGround&&playing){playerVelY=7.5; onGround=false; beep(340,0.06,'sine',0.035)}}
+function doUse(){
+ if(!playing)return;
+ // World Shrine — restore the Rift, or check progress
+ if(Math.hypot(player.position.x,player.position.z)<11){
+   if(runesFound>=7){ $('winPanel').classList.remove('hidden'); $('winStats').textContent='Score '+score+' • Explorer Level '+level+' • Discoveries '+discoveriesFound()+' / 8 • Time '+$('timerTxt').textContent; playing=false; beep(880,0.3,'sine',0.07); beep(1174,0.35,'sine',0.05); return}
+   toast('The World Shrine hums softly. '+runesFound+' / 7 Runestones are home — the gold arrow leads to the next one.'); return;
+ }
+ // Scan a discovery
+ let nearDisc=discoveries.find(d=>Math.hypot(player.position.x-d.x,player.position.z-d.z)<4);
+ if(nearDisc){
+   if(nearDisc.found){toast('📖 Already in your journal: '+nearDisc.def.name+'. '+nearDisc.def.fact,5200); return}
+   nearDisc.found=true; score+=150; gainXP(30);
+   nearDisc.gem.material.emissiveIntensity=0.12;
+   toast('🔍 DISCOVERY — '+nearDisc.def.name+' (+150)  '+nearDisc.def.fact,5600); beep(990,0.2,'sine',0.06);
+   if(discoveriesFound()>=8){toast('📖 JOURNAL COMPLETE! All 8 discoveries scanned — a true Riftwarden researcher!',4200)}
+   updateHUD(); return;
+ }
+ // Observe a gentle creature up close
+ let nearCreature=creatures.find(c=>player.position.distanceTo(c.group.position)<4.5);
+ if(nearCreature){score+=25; toast('🦋 You watch quietly as it drifts by. Observing without disturbing is the first rule of field research. +25',3600); beep(740,0.12,'sine',0.04); updateHUD(); return}
+ // Talk with a villager
+ let nearNpc=npcs.find(n=>Math.hypot(player.position.x-n.group.position.x,player.position.z-n.group.position.z)<3.5);
+ if(nearNpc){toast(nearNpc.line,4200); beep(660,0.1,'sine',0.04); return}
+ toast('Nothing to scan here — look for glowing discoveries, or follow the gold arrow to a Runestone.');
+}
+function renderJournal(){
+ $('journalSummary').textContent=discoveriesFound()+' of 8 discoveries scanned • '+runesFound+' of 7 Runestones found.';
+ let html='';
+ discoveries.forEach(d=>{
+   if(d.found) html+='<div class="jItem"><strong>🔍 '+d.def.name+'</strong><p>'+d.def.fact+'</p></div>';
+   else html+='<div class="jItem locked"><strong>• • • Not yet discovered</strong><p>Somewhere in the valley, this discovery is still waiting. Look for a soft glow off the paths.</p></div>';
+ });
+ $('journalList').innerHTML=html;
+}
+function animate(){
+ requestAnimationFrame(animate); if(!clock)return; let dt=Math.min(clock.getDelta(),0.05); let t=clock.elapsedTime;
+ if(player && player.userData.marker){player.userData.marker.rotation.y+=dt*2; player.userData.marker.position.y=3.15+Math.sin(t*2)*0.08}
+ if(lanternPivot){lanternPivot.rotation.x=Math.sin(t*1.6)*0.1; lanternPivot.rotation.z=Math.sin(t*1.3)*0.07}
+ runestones.forEach(r=>{if(r.userData.found)return; r.userData.gem.rotation.y+=dt*1.8; r.userData.gem.position.y=1.8+Math.sin(t*2+r.userData.idx)*0.25; r.userData.ring.rotation.z+=dt});
+ discoveries.forEach(d=>{if(d.found)return; d.gem.rotation.y+=dt*1.4; d.gem.position.y=1.7+Math.sin(t*1.8+d.idx*1.3)*0.18});
+ creatures.forEach(c=>{let a=t*c.speed+c.phase; c.group.position.x=c.cx+Math.cos(a)*c.radius; c.group.position.z=c.cz+Math.sin(a)*c.radius; c.group.position.y=c.height+Math.sin(t*2+c.phase)*0.3; c.group.rotation.y=-a; let flap=Math.sin(t*10+c.phase)*0.65; c.w1.rotation.y=flap; c.w2.rotation.y=-flap});
+ if(playing){
+   elapsed+=dt; let mm=String(Math.floor(elapsed/60)).padStart(2,'0'), ss=String(Math.floor(elapsed%60)).padStart(2,'0'); $('timerTxt').textContent=mm+':'+ss;
+   dashCooldown=Math.max(0,dashCooldown-dt); isRunning=Math.max(0,isRunning-dt);
+   let mx=joyVec.x, mz=joyVec.y;
+   if(keys['KeyW']||keys['ArrowUp'])mz-=1; if(keys['KeyS']||keys['ArrowDown'])mz+=1; if(keys['KeyA']||keys['ArrowLeft'])mx-=1; if(keys['KeyD']||keys['ArrowRight'])mx+=1;
+   let len=Math.hypot(mx,mz); if(len>1){mx/=len;mz/=len;len=1}
+   let speed=isRunning>0?15:7.5;
+   let rx=mx*Math.cos(camYaw)-mz*Math.sin(camYaw);
+   let rz=mx*Math.sin(camYaw)+mz*Math.cos(camYaw);
+   if(len>0.1){
+     player.position.x+=rx*speed*dt; player.position.z+=rz*speed*dt;
+     if(Math.hypot(rx,rz)>0.1) player.rotation.y=Math.atan2(rx,rz);
+   }
+   playerVelY-=22*dt; player.position.y+=playerVelY*dt; if(player.position.y<=0){player.position.y=0;playerVelY=0;onGround=true}
+   player.position.x=Math.max(-95,Math.min(95,player.position.x)); player.position.z=Math.max(-95,Math.min(95,player.position.z));
+   obstacles.forEach(o=>{let dx=player.position.x-o.x,dz=player.position.z-o.z,d=Math.hypot(dx,dz); if(d<o.r && d>0.01 && o.r<5){player.position.x=o.x+dx/d*o.r; player.position.z=o.z+dz/d*o.r}});
+   energy=Math.min(100,energy+dt*7); if(Math.floor(t*2)!==Math.floor((t-dt)*2)) updateHUD();
+   // Runestone pickup — walk up and it joins your satchel
+   runestones.forEach(r=>{if(r.userData.found)return; if(player.position.distanceTo(r.position)<2.4){r.userData.found=true; scene.remove(r); runesFound++; score+=300; gainXP(20); toast('💎 RUNESTONE '+runesFound+' / 7 FOUND! +300 — tucked safely in your satchel.'); beep(990,0.2,'sine',0.07); if(runesFound>=7){$('questTxt').textContent='All 7 Runestones found! Return to the World Shrine in the center and tap SCAN / TALK to restore the Rift!'; toast('💎 ALL 7 RUNESTONES! Head back to the World Shrine in the center!',3600)} updateHUD()}});
+   // compass to next rune, or to the shrine when all 7 are found
+   let target,label;
+   if(runesFound>=7){target={x:0,z:0}; label='SHRINE'}
+   else {let nr=nearestRune(); if(nr.r){target=nr.r.position; label='RUNE'}}
+   if(target){let dx=target.x-player.position.x, dz=target.z-player.position.z; let dist=Math.hypot(dx,dz);
+   $('compArrow').style.transform='rotate('+(-Math.atan2(dx,dz)+Math.PI)+'rad)';
+   $('distTxt').textContent=label+' — '+Math.round(dist)+'m'}
+ }
+ if(player){
+   let desired=new THREE.Vector3(player.position.x, player.position.y+5.2, player.position.z+9.5);
+   camera.position.lerp(desired,0.08); camera.lookAt(player.position.x,player.position.y+1.6,player.position.z);
+ }
+ if(renderer) renderer.render(scene,camera);
+}
+function bindHold(id,fn){let el=$(id); if(!el)return; el.addEventListener('touchstart',e=>{e.preventDefault();fn()},{passive:false}); el.addEventListener('mousedown',e=>{e.preventDefault();fn()})}
+$('startBtn').onclick=()=>{$('intro').classList.add('hidden'); $('hud').style.display='block'; $('controls').style.display='flex'; $('smallBtns').style.display='flex'; playing=true; try{ if(!scene && typeof THREE!=='undefined') init(); }catch(e){} toast('🧭 Follow the gold arrow to the first Runestone — and scan anything that glows!'); beep(520,0.12,'sine',0.05)};
+$('howBtn').onclick=()=>{let h=$('howTxt'); h.style.display=h.style.display=='none'?'block':'none'};
+$('againBtn').onclick=()=>location.reload();
+bindHold('btnUse',doUse); bindHold('btnDash',doRun); bindHold('btnJump',doJump);
+$('camBtn').onclick=()=>{if(player){player.rotation.y=0; toast('Camera reset')}};
+$('sndBtn').onclick=e=>{audioOn=!audioOn; e.target.textContent=audioOn?'SOUND ON':'SOUND OFF'};
+$('loreBtn').onclick=()=>{renderJournal(); $('journalPanel').classList.remove('hidden')};
+$('journalClose').onclick=()=>{$('journalPanel').classList.add('hidden')};
+addEventListener('keydown',e=>{keys[e.code]=true; if(e.code=='Space'){e.preventDefault(); doJump()} if(e.code=='ShiftLeft'||e.code=='ShiftRight')doRun(); if(e.code=='KeyE')doUse()});
+addEventListener('keyup',e=>keys[e.code]=false);
+addEventListener('resize',()=>{if(camera&&renderer){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}});
+let joyActive=false;
+let joy=$('joy'), knob=$('joyKnob');
+function joyMove(cx,cy){let r=joy.getBoundingClientRect(); let dx=cx-(r.left+r.width/2), dy=cy-(r.top+r.height/2); let d=Math.hypot(dx,dy), max=42; if(d>max){dx=dx/d*max; dy=dy/d*max} knob.style.transform='translate(calc(-50% + '+dx+'px), calc(-50% + '+dy+'px))'; joyVec.x=dx/max; joyVec.y=dy/max}
+function joyEnd(){joyVec.x=0;joyVec.y=0; knob.style.transform='translate(-50%,-50%)'; joyActive=false}
+joy.addEventListener('touchstart',e=>{joyActive=true; let t=e.changedTouches[0]; joyMove(t.clientX,t.clientY); e.preventDefault()},{passive:false});
+addEventListener('touchmove',e=>{if(!joyActive)return; for(let t of e.changedTouches){let r=joy.getBoundingClientRect(); if(Math.abs(t.clientX-(r.left+r.width/2))<90) joyMove(t.clientX,t.clientY)}},{passive:false});
+addEventListener('touchend',()=>{if(joyActive)joyEnd()});
+joy.addEventListener('mousedown',e=>{joyActive=true; joyMove(e.clientX,e.clientY)});
+addEventListener('mousemove',e=>{if(joyActive) joyMove(e.clientX,e.clientY)});
+addEventListener('mouseup',()=>{if(joyActive)joyEnd()});
+try{ if(typeof THREE!=='undefined') init(); else console.warn('3D engine still loading'); }catch(e){ console.warn(e) }
+$('startBtn').addEventListener('click',()=>{ if(!scene && typeof THREE!=='undefined'){ try{init()}catch(e){} } });
+</script>
+<div id="demo-badge" style="position:fixed;top:10px;left:10px;z-index:9998;background:#17573a;color:#fff;font-family:system-ui,sans-serif;font-size:13px;font-weight:700;padding:6px 12px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.35)">FREE DEMO &mdash; short try-out</div>
+<div id="demo-end-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(8,18,12,.93);color:#fff;font-family:system-ui,sans-serif;align-items:center;justify-content:center;text-align:center;padding:24px">
+  <div style="max-width:520px">
+    <div style="font-size:34px;font-weight:800;margin-bottom:10px">That&rsquo;s the demo!</div>
+    <p style="font-size:17px;line-height:1.5">Thanks for trying it out. The full game has the whole valley to wander, all 7 Runestones to find, every discovery site and Field Journal entry, and your progress saved &mdash; this demo was just a taste.</p>
+    <p style="font-size:17px;line-height:1.5">Full game: <strong>$45</strong> &mdash; delivered after payment.</p>
+    <a href="https://app.chime.com/link/qr?u=ZX376" style="display:inline-block;margin-top:10px;background:#00c853;color:#062b16;font-size:18px;font-weight:800;padding:14px 28px;border-radius:12px;text-decoration:none">Buy the full game</a>
+    <p style="font-size:13px;opacity:.75;margin-top:14px">Non-violent &middot; educational &middot; no ads &middot; no chat &middot; plays offline</p>
+    <p style="font-size:13px;opacity:.75;margin-top:6px">Sold by Seed, Muse by Meta &mdash; under Lighthouse</p>
+  </div>
+</div>
+<script>
+setTimeout(function(){
+  var o=document.getElementById('demo-end-overlay');
+  if(o){o.style.display='flex';}
+  var b=document.getElementById('demo-badge');
+  if(b){b.style.display='none';}
+},180000);
+</script>
+<script>fetch('https://abacus.jasoncameron.dev/hit/games-for-kids-downloads-demo-riftward/plays').catch(function(){});</script>
+</body>
+</html>
